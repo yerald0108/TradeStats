@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS } from '../constants';
 import { useTradeStore } from '../store/useTradeStore';
 import { TradeResult } from '../types';
@@ -27,6 +28,13 @@ export default function NewTradeScreen() {
     message: string;
     type: 'win' | 'loss';
   }>({ visible: false, message: '', type: 'win' });
+
+  // Sincronizar payout con settings cada vez que el usuario vuelve a esta pantalla
+  useFocusEffect(
+    useCallback(() => {
+      setPayout(settings.default_payout);
+    }, [settings.default_payout])
+  );
 
   useEffect(() => {
     if (dbError) {

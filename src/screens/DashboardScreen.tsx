@@ -19,7 +19,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function DashboardScreen() {
   // Bug fix #1: Dashboard ya no comparte estado con History/Stats.
   // Usa dashboardStats (always all-time) y recentTrades (5 más recientes).
-  const { dashboardStats, recentTrades, trades, settings, loadDashboard, loadSettings } =
+  const { dashboardStats, recentTrades, settings, loadDashboard, loadSettings } =
     useTradeStore();
 
   useFocusEffect(
@@ -281,8 +281,8 @@ export default function DashboardScreen() {
         <View style={styles.recentSection}>
           <View style={styles.recentHeader}>
             <Text style={styles.recentTitle}>Últimas operaciones</Text>
-            {trades.length > 5 && (
-            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+            {dashboardStats.totalTrades > 5 && (
+              <TouchableOpacity onPress={() => navigation.navigate('History')}>
                 <Text style={styles.recentCta}>Ver todas</Text>
               </TouchableOpacity>
             )}

@@ -156,6 +156,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ dbError: res.error ?? 'Error desconocido.' });
       return;
     }
+    set({ historyPage: 1 });
     get().loadDashboard();
     get().loadAll();
   },
@@ -166,6 +167,7 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
       set({ dbError: res.error ?? 'Error desconocido.' });
       return;
     }
+    set({ historyPage: 1 });
     get().loadDashboard();
     get().loadAll();
   },

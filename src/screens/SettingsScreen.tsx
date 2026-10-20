@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,18 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS, PAYOUT_OPTIONS } from '../constants';
 import { useTradeStore } from '../store/useTradeStore';
 
 export default function SettingsScreen() {
-  const { settings, saveSettings, dbError, clearDbError } = useTradeStore();
+  const { settings, loadSettings, saveSettings, dbError, clearDbError } = useTradeStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [])
+  );
 
   const [capital, setCapital] = useState('');
   const [selectedPayout, setSelectedPayout] = useState(85);

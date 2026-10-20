@@ -1,5 +1,4 @@
-import React, { useRef } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { COLORS } from '../constants';
@@ -38,31 +37,8 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
   },
 };
 
-const FadeScreen = ({ children }: { children: React.ReactNode }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  React.useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, { opacity }]}>
-      {children}
-    </Animated.View>
-  );
-};
-
 // Componentes definidos como constantes estáticas FUERA del render
 // para evitar que React Navigation los desmonte/monte en cada render
-const DashboardFade = () => <FadeScreen><DashboardScreen /></FadeScreen>;
-const NewTradeFade = () => <FadeScreen><NewTradeScreen /></FadeScreen>;
-const HistoryFade = () => <FadeScreen><HistoryScreen /></FadeScreen>;
-const StatsFade = () => <FadeScreen><StatsScreen /></FadeScreen>;
-const SettingsFade = () => <FadeScreen><SettingsScreen /></FadeScreen>;
 
 export default function AppNavigator() {
   return (
@@ -94,27 +70,27 @@ export default function AppNavigator() {
       >
         <Tab.Screen
           name="Dashboard"
-          component={DashboardFade}
+          component={DashboardScreen}
           options={{ tabBarLabel: 'Inicio' }}
         />
         <Tab.Screen
           name="NewTrade"
-          component={NewTradeFade}
+          component={NewTradeScreen}
           options={{ tabBarLabel: 'Registrar' }}
         />
         <Tab.Screen
           name="History"
-          component={HistoryFade}
+          component={HistoryScreen}
           options={{ tabBarLabel: 'Historial' }}
         />
         <Tab.Screen
           name="Stats"
-          component={StatsFade}
+          component={StatsScreen}
           options={{ tabBarLabel: 'Estadísticas' }}
         />
         <Tab.Screen
           name="Settings"
-          component={SettingsFade}
+          component={SettingsScreen}
           options={{ tabBarLabel: 'Config' }}
         />
       </Tab.Navigator>
