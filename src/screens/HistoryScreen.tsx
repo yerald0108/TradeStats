@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,14 @@ import {
   StyleSheet,
   Alert,
   Modal,
-  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { COLORS, SPACING, RADIUS, PAYOUT_OPTIONS } from '../constants';
+import { COLORS, SPACING, RADIUS } from '../constants';
 import { useTradeStore, PeriodFilter } from '../store/useTradeStore';
 import { Trade, TradeResult } from '../types';
+import TradeForm from '../components/TradeForm';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 const PERIODS: { label: string; value: PeriodFilter }[] = [
   { label: 'Hoy', value: 'today' },
@@ -34,8 +35,18 @@ const formatDate = (isoString: string): string => {
 };
 
 export default function HistoryScreen() {
-  const { trades, removeTrade, editTrade, periodFilter, setPeriodFilter, loadAll } =
-    useTradeStore();
+  const {
+    trades,
+    removeTrade,
+    editTrade,
+    periodFilter,
+    setPeriodFilter,
+    loadAll,
+    isLoading,
+    loadMoreTrades,
+    dbError,
+    clearDbError,
+  } = useTradeStore();
 
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [editAmount, setEditAmount] = useState('');
@@ -47,6 +58,13 @@ export default function HistoryScreen() {
       loadAll();
     }, [])
   );
+
+  useEffect(() => {
+    if (dbError) {
+      Alert.alert('Error', dbError, [{ text: 'OK', onPress: clearDbError }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbError]);
 
   const handleDeleteTrade = (id: number) => {
     Alert.alert(
@@ -138,7 +156,6 @@ export default function HistoryScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-
         <Text style={styles.title}>Historial</Text>
 
         {/* Filtros de período */}
@@ -168,7 +185,9 @@ export default function HistoryScreen() {
           {trades.length} operaciones en este período
         </Text>
 
-        {trades.length === 0 ? (
+        {isLoading ? (
+          <LoadingOverlay visible={isLoading} />
+        ) : trades.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Sin operaciones</Text>
             <Text style={styles.emptyText}>
@@ -182,6 +201,13 @@ export default function HistoryScreen() {
             renderItem={renderItem}
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
+            onEndReached={loadMoreTrades}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              isLoading ? (
+                <Text style={styles.loadingText}>Cargando más...</Text>
+              ) : null
+            }
           />
         )}
       </View>
@@ -197,76 +223,14 @@ export default function HistoryScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Editar operación</Text>
 
-            <Text style={styles.modalLabel}>Monto invertido</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={editAmount}
-                onChangeText={setEditAmount}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                placeholderTextColor={COLORS.textMuted}
-              />
-            </View>
-
-            <Text style={styles.modalLabel}>Payout</Text>
-            <View style={styles.payoutRow}>
-              {PAYOUT_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.optionButton,
-                    editPayout === option && styles.optionButtonActive,
-                  ]}
-                  onPress={() => setEditPayout(option)}
-                >
-                  <Text
-                    style={[
-                      styles.optionButtonText,
-                      editPayout === option && styles.optionButtonTextActive,
-                    ]}
-                  >
-                    {option}%
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.modalLabel}>Resultado</Text>
-            <View style={styles.resultRow}>
-              <TouchableOpacity
-                style={[
-                  styles.resultButton,
-                  editResult === 'win' && styles.resultWinActive,
-                ]}
-                onPress={() => setEditResult('win')}
-              >
-                <Text
-                  style={[
-                    styles.resultButtonText,
-                    editResult === 'win' && styles.resultWinText,
-                  ]}
-                >
-                  Ganada
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.resultButton,
-                  editResult === 'loss' && styles.resultLossActive,
-                ]}
-                onPress={() => setEditResult('loss')}
-              >
-                <Text
-                  style={[
-                    styles.resultButtonText,
-                    editResult === 'loss' && styles.resultLossText,
-                  ]}
-                >
-                  Perdida
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TradeForm
+              amount={editAmount}
+              payout={editPayout}
+              result={editResult}
+              onAmountChange={setEditAmount}
+              onPayoutChange={setEditPayout}
+              onResultChange={setEditResult}
+            />
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -446,6 +410,12 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
   },
+  loadingText: {
+    textAlign: 'center',
+    color: COLORS.textMuted,
+    fontSize: 13,
+    paddingVertical: SPACING.md,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -457,93 +427,16 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.xl,
     padding: SPACING.lg,
     paddingBottom: SPACING.xxl,
-    gap: SPACING.sm,
+    gap: SPACING.lg,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-  },
-  modalLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginTop: SPACING.sm,
-  },
-  inputWrapper: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  input: {
-    color: COLORS.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-    padding: SPACING.md,
-  },
-  payoutRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  optionButton: {
-    flex: 1,
-    paddingVertical: SPACING.sm,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-  },
-  optionButtonActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  optionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  optionButtonTextActive: {
-    color: COLORS.textPrimary,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  resultButton: {
-    flex: 1,
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-  },
-  resultWinActive: {
-    backgroundColor: `${COLORS.win}20`,
-    borderColor: COLORS.win,
-  },
-  resultLossActive: {
-    backgroundColor: `${COLORS.loss}20`,
-    borderColor: COLORS.loss,
-  },
-  resultButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textMuted,
-  },
-  resultWinText: {
-    color: COLORS.win,
-  },
-  resultLossText: {
-    color: COLORS.loss,
   },
   modalActions: {
     flexDirection: 'row',
     gap: SPACING.sm,
-    marginTop: SPACING.md,
   },
   modalCancel: {
     flex: 1,

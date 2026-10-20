@@ -15,7 +15,6 @@ export type PeriodFilter = 'today' | 'week' | 'month' | 'all';
 
 const PAGE_SIZE = 20;
 
-// Estado vacío reutilizable — evita duplicar el objeto en varios lugares
 const EMPTY_STATS: TradeStats = {
   totalTrades: 0,
   wins: 0,
@@ -47,10 +46,8 @@ interface TradeStore {
   settings: Settings;
 
   // ─── Contexto Dashboard (siempre all-time) ────────────────
-  // El Dashboard nunca debe verse afectado por el filtro de período
-  // que el usuario seleccione en Historial o Estadísticas.
   dashboardStats: TradeStats;
-  recentTrades: Trade[]; // últimas 5 operaciones para el preview
+  recentTrades: Trade[];
 
   // ─── Contexto filtrado (History + Stats) ─────────────────
   trades: Trade[];
@@ -58,6 +55,9 @@ interface TradeStore {
   periodFilter: PeriodFilter;
   historyPage: number;
   isLoading: boolean;
+
+  // ─── Error de base de datos ───────────────────────────────
+  dbError: string | null;
 
   // ─── Acciones ─────────────────────────────────────────────
   loadDashboard: () => void;
@@ -69,6 +69,7 @@ interface TradeStore {
   saveSettings: (initial_capital: number, default_payout: number) => void;
   setPeriodFilter: (period: PeriodFilter) => void;
   loadMoreTrades: () => void;
+  clearDbError: () => void;
 }
 
 const getPeriodDates = (period: PeriodFilter): { from: string; to: string } => {
@@ -94,32 +95,26 @@ const getPeriodDates = (period: PeriodFilter): { from: string; to: string } => {
 export const useTradeStore = create<TradeStore>((set, get) => ({
   settings: { initial_capital: 0, default_payout: 85 },
 
-  // Dashboard — inicializa vacío, se rellena en loadDashboard
   dashboardStats: EMPTY_STATS,
   recentTrades: [],
 
-  // Filtrado — inicializa vacío, se rellena en loadAll
   trades: [],
   stats: EMPTY_STATS,
   periodFilter: 'today',
   historyPage: 1,
   isLoading: false,
+  dbError: null,
 
   // ─── loadDashboard ────────────────────────────────────────
-  // Siempre carga TODAS las operaciones sin importar el periodFilter.
-  // Solo debe llamarse desde DashboardScreen.
   loadDashboard: () => {
     const { settings } = get();
     const allTrades = getAllTrades();
     const dashboardStats = calculateStats(allTrades, settings.initial_capital);
-    // getAllTrades retorna DESC → slice(0,5) da las 5 más recientes
     const recentTrades = allTrades.slice(0, 5);
     set({ dashboardStats, recentTrades });
   },
 
   // ─── loadAll ──────────────────────────────────────────────
-  // Carga operaciones según el periodFilter actual.
-  // Solo debe llamarse desde HistoryScreen y StatsScreen.
   loadAll: () => {
     const { periodFilter, settings, historyPage } = get();
     set({ isLoading: true });
@@ -134,7 +129,6 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     }
 
     const stats = calculateStats(allTrades, settings.initial_capital);
-    // trades expone la página actual; stats refleja el período completo
     const trades = allTrades.slice(0, historyPage * PAGE_SIZE);
 
     set({ trades, stats, isLoading: false });
@@ -146,30 +140,44 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   },
 
   addTrade: (amount, payout, result) => {
-    insertTrade(amount, payout, result);
+    const res = insertTrade(amount, payout, result);
+    if (!res.success) {
+      set({ dbError: res.error ?? 'Error desconocido.' });
+      return;
+    }
     set({ historyPage: 1 });
-    // Refrescar ambos contextos: la mutación afecta a Dashboard y al filtrado
     get().loadDashboard();
     get().loadAll();
   },
 
   editTrade: (id, amount, payout, result) => {
-    updateTrade(id, amount, payout, result);
+    const res = updateTrade(id, amount, payout, result);
+    if (!res.success) {
+      set({ dbError: res.error ?? 'Error desconocido.' });
+      return;
+    }
     get().loadDashboard();
     get().loadAll();
   },
 
   removeTrade: (id) => {
-    deleteTrade(id);
+    const res = deleteTrade(id);
+    if (!res.success) {
+      set({ dbError: res.error ?? 'Error desconocido.' });
+      return;
+    }
     get().loadDashboard();
     get().loadAll();
   },
 
   saveSettings: (initial_capital, default_payout) => {
-    updateSettings(initial_capital, default_payout);
+    const res = updateSettings(initial_capital, default_payout);
+    if (!res.success) {
+      set({ dbError: res.error ?? 'Error desconocido.' });
+      return;
+    }
     const settings = getSettings();
     set({ settings });
-    // Las métricas de riesgo dependen del capital → refrescar ambos contextos
     get().loadDashboard();
     get().loadAll();
   },
@@ -179,11 +187,11 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     get().loadAll();
   },
 
-  // Bug fix #4: captura newPage antes del set para garantizar
-  // que loadAll siempre lee el valor incrementado, no el anterior.
   loadMoreTrades: () => {
     const newPage = get().historyPage + 1;
     set({ historyPage: newPage });
     get().loadAll();
   },
+
+  clearDbError: () => set({ dbError: null }),
 }));

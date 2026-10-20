@@ -13,6 +13,7 @@ import Svg, { Polyline, Line, Text as SvgText, Circle } from 'react-native-svg';
 import { COLORS, SPACING, RADIUS } from '../constants';
 import { useTradeStore, PeriodFilter } from '../store/useTradeStore';
 import { isStrategyProfitable, getReliabilityLabel } from '../utils/calculations';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - SPACING.lg * 2;
@@ -158,7 +159,7 @@ const StatRow = ({
 );
 
 export default function StatsScreen() {
-  const { stats, periodFilter, setPeriodFilter, loadAll, settings } =
+  const { stats, periodFilter, setPeriodFilter, loadAll, settings, isLoading } =
     useTradeStore();
 
   useFocusEffect(
@@ -216,7 +217,9 @@ export default function StatsScreen() {
           ))}
         </View>
 
-        {stats.totalTrades === 0 ? (
+        {isLoading ? (
+          <LoadingOverlay visible={isLoading} />
+        ) : stats.totalTrades === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Sin datos</Text>
             <Text style={styles.emptyText}>

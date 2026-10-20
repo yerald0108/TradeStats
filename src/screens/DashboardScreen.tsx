@@ -1,4 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback } from 'react';
 import {
   View,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +19,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function DashboardScreen() {
   // Bug fix #1: Dashboard ya no comparte estado con History/Stats.
   // Usa dashboardStats (always all-time) y recentTrades (5 más recientes).
-  const { dashboardStats, recentTrades, settings, loadDashboard, loadSettings } =
+  const { dashboardStats, recentTrades, trades, settings, loadDashboard, loadSettings } =
     useTradeStore();
 
   useFocusEffect(
@@ -39,6 +40,8 @@ export default function DashboardScreen() {
   const reliability = getReliabilityLabel(dashboardStats.reliabilityLevel);
   const currentBalance = settings.initial_capital + dashboardStats.netProfitLoss;
   const capitalPending = settings.initial_capital === 0;
+
+  const navigation = useNavigation<any>();
 
   const formatSigned = (val: number) => {
     const sign = val >= 0 ? '+' : '';
@@ -276,7 +279,14 @@ export default function DashboardScreen() {
 
         {/* Últimas operaciones */}
         <View style={styles.recentSection}>
-          <Text style={styles.recentTitle}>Últimas operaciones</Text>
+          <View style={styles.recentHeader}>
+            <Text style={styles.recentTitle}>Últimas operaciones</Text>
+            {trades.length > 5 && (
+            <TouchableOpacity onPress={() => navigation.navigate('History')}>
+                <Text style={styles.recentCta}>Ver todas</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {recentTrades.length === 0 ? (
             <View style={styles.recentEmpty}>
               <Text style={styles.recentEmptyText}>
@@ -613,5 +623,15 @@ const styles = StyleSheet.create({
   },
   textWarning: {
     color: COLORS.warning,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentCta: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

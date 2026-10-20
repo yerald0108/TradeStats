@@ -3,8 +3,10 @@ import {
   Animated,
   Text,
   StyleSheet,
+  Modal,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../constants';
 
@@ -18,6 +20,7 @@ interface ToastProps {
 export default function Toast({ visible, message, type, onHide }: ToastProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
@@ -53,34 +56,49 @@ export default function Toast({ visible, message, type, onHide }: ToastProps) {
     }
   }, [visible]);
 
-  if (!visible) return null;
-
   const isWin = type === 'win';
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        isWin ? styles.containerWin : styles.containerLoss,
-        { opacity, transform: [{ translateY }] },
-      ]}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={() => {}}
     >
-      <Ionicons
-        name={isWin ? 'checkmark-circle' : 'close-circle'}
-        size={20}
-        color={isWin ? COLORS.win : COLORS.loss}
-      />
-      <Text style={[styles.message, isWin ? styles.textWin : styles.textLoss]}>
-        {message}
-      </Text>
-    </Animated.View>
+      <View style={styles.overlay} pointerEvents="none">
+        <Animated.View
+          style={[
+            styles.container,
+            isWin ? styles.containerWin : styles.containerLoss,
+            {
+              opacity,
+              transform: [{ translateY }],
+              top: insets.top > 0 ? insets.top + SPACING.md : 40,
+            },
+          ]}
+        >
+          <Ionicons
+            name={isWin ? 'checkmark-circle' : 'close-circle'}
+            size={20}
+            color={isWin ? COLORS.win : COLORS.loss}
+          />
+          <Text style={[styles.message, isWin ? styles.textWin : styles.textLoss]}>
+            {message}
+          </Text>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    position: 'relative',
+  },
   container: {
     position: 'absolute',
-    top: 60,
     left: SPACING.lg,
     right: SPACING.lg,
     flexDirection: 'row',

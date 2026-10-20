@@ -15,7 +15,7 @@ import { COLORS, SPACING, RADIUS, PAYOUT_OPTIONS } from '../constants';
 import { useTradeStore } from '../store/useTradeStore';
 
 export default function SettingsScreen() {
-  const { settings, saveSettings } = useTradeStore();
+  const { settings, saveSettings, dbError, clearDbError } = useTradeStore();
 
   const [capital, setCapital] = useState('');
   const [selectedPayout, setSelectedPayout] = useState(85);
@@ -24,6 +24,13 @@ export default function SettingsScreen() {
     setCapital(settings.initial_capital > 0 ? String(settings.initial_capital) : '');
     setSelectedPayout(settings.default_payout);
   }, [settings]);
+
+  useEffect(() => {
+    if (dbError) {
+      Alert.alert('Error', dbError, [{ text: 'OK', onPress: clearDbError }]);
+    } 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbError]);
 
   const handleSave = () => {
     const capitalValue = parseFloat(capital);

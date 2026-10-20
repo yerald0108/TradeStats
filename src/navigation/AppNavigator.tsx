@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { Animated, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { COLORS } from '../constants';
@@ -37,6 +38,32 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
   },
 };
 
+const FadeScreen = ({ children }: { children: React.ReactNode }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity }]}>
+      {children}
+    </Animated.View>
+  );
+};
+
+// Componentes definidos como constantes estáticas FUERA del render
+// para evitar que React Navigation los desmonte/monte en cada render
+const DashboardFade = () => <FadeScreen><DashboardScreen /></FadeScreen>;
+const NewTradeFade = () => <FadeScreen><NewTradeScreen /></FadeScreen>;
+const HistoryFade = () => <FadeScreen><HistoryScreen /></FadeScreen>;
+const StatsFade = () => <FadeScreen><StatsScreen /></FadeScreen>;
+const SettingsFade = () => <FadeScreen><SettingsScreen /></FadeScreen>;
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -58,7 +85,7 @@ export default function AppNavigator() {
             fontWeight: '600',
             marginTop: 2,
           },
-          tabBarIcon: ({ focused, color, size }) => {
+          tabBarIcon: ({ focused, color }) => {
             const icons = TAB_ICONS[route.name];
             const iconName = focused ? icons.active : icons.inactive;
             return <Ionicons name={iconName} size={22} color={color} />;
@@ -67,27 +94,27 @@ export default function AppNavigator() {
       >
         <Tab.Screen
           name="Dashboard"
-          component={DashboardScreen}
+          component={DashboardFade}
           options={{ tabBarLabel: 'Inicio' }}
         />
         <Tab.Screen
           name="NewTrade"
-          component={NewTradeScreen}
+          component={NewTradeFade}
           options={{ tabBarLabel: 'Registrar' }}
         />
         <Tab.Screen
           name="History"
-          component={HistoryScreen}
+          component={HistoryFade}
           options={{ tabBarLabel: 'Historial' }}
         />
         <Tab.Screen
           name="Stats"
-          component={StatsScreen}
+          component={StatsFade}
           options={{ tabBarLabel: 'Estadísticas' }}
         />
         <Tab.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={SettingsFade}
           options={{ tabBarLabel: 'Config' }}
         />
       </Tab.Navigator>
